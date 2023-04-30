@@ -8,11 +8,14 @@
 
 int main(int argc, char* argv[])
 {
+    //as GPUs are always occupied, that function allows to choose which GPU to use
     acc_set_device_num(3, acc_device_default);
     int netSize = 128;
     double minError = 0.000001;
     int maxIterations = 1000000;
     char* end;
+    
+    //console arguments check + "documentation"
     if (argc != 4){
         printf("You must enter excatly 3 arguments:\n1. Grid size (one number)\n2. Minimal error\n3. Iterations amount\n");
         return -1;
@@ -32,18 +35,23 @@ int main(int argc, char* argv[])
         bl = 30, //bottom left
         br = 20; //bottom right
 
+    //these are used for calculating edges
     double horizontalStepTop = (tr - tl) / (netSize - 1), 
         horizontalStepBottom = (br - bl) / (netSize - 1), 
         verticalStepLeft = (bl - tl) / (netSize - 1), 
         verticalStepRight = (br - tr) / (netSize - 1);
 
-    int arrSize = netSize * netSize; //pre-calculate to use every iteration for Daxpy and for data allocation
+    //pre-calculate to use every iteration for Daxpy and for data allocation
+    int arrSize = netSize * netSize; 
 
+    //create arrays so they can be copied to GPU
     double* thermalConductivityMatrix = (double*)malloc(sizeof(double*) * netSize * netSize);
     double* thermalConductivityMatrixMod = (double*)malloc(sizeof(double*) * netSize * netSize);
     double* thermalConductivityMatrixModCopy = (double*)malloc(sizeof(double*) * netSize * netSize);
     double* temp;
-    //i - x (cols), j - y (rows), element(i, j) = i * netSize + j
+    //i - x (cols)
+    //j - y (rows)
+    //element(i, j) = i * netSize + j
 
 
 #pragma acc data copyin(thermalConductivityMatrixMod[0:arrSize], thermalConductivityMatrixModCopy[0:arrSize]) copy(thermalConductivityMatrix[0:arrSize])
@@ -71,11 +79,14 @@ int main(int argc, char* argv[])
     cublasHandle_t handle;
     cublasStatus_t stat;
 
+    //error tracking
     stat = cublasCreate(&handle);
     if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas handle creation failed!\n"); return -1; }
 
+    //iterations. These are interpretation of Fortran code for C
     while (error > minError && iteration < maxIterations) {
 
+        //pragma present check if array is on the device
         #pragma acc data present(thermalConductivityMatrix, thermalConductivityMatrixMod)
         #pragma acc parallel loop reduction(max:error) collapse(2)
         for (int i = 1; i < netSize - 1; i++) {
@@ -88,27 +99,34 @@ int main(int argc, char* argv[])
             }
         }
 
+        //every 100th iteration will be the tracking iteration - error will be calculated and printed
         if (iteration % 100 == 0) {
         error = 0.;
         errorIdx = 0;
 
+        //pragma to use data adress within host code
         #pragma acc host_data use_device(thermalConductivityMatrix, thermalConductivityMatrixMod, thermalConductivityMatrixModCopy)
         {
+                //copies array to use Daxpy as Daxpy changes one of functional arrays
                 stat = cublasDcopy(handle, arrSize, thermalConductivityMatrixMod, 1, thermalConductivityMatrixModCopy, 1);
                 if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas Dcopy failed!\n"); break; }
 
+                //finding difference of matrices
                 stat = cublasDaxpy(handle, arrSize, &alpha, thermalConductivityMatrix, 1, thermalConductivityMatrixModCopy, 1);
                 if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas daxpy failed!\n"); break; }      
 
+                //finding max
                 stat = cublasIdamax(handle, arrSize, thermalConductivityMatrixModCopy, 1, &errorIdx);
                 if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas idamax failed!\n"); break; }
             }
             error = thermalConductivityMatrixModCopy[errorIdx - 1];
         }
 
+        //every 1000th iteartion the error will be printed
         if (iteration % 1000 == 0)
             printf("iteration: %d error = %0.20g\n", iteration, error);
 
+        //swapping matrices
         temp = thermalConductivityMatrix;
         thermalConductivityMatrix = thermalConductivityMatrixMod;
         thermalConductivityMatrixMod = temp;
