@@ -6,6 +6,20 @@
 #include <cublas_v2.h>
 #include <openacc.h>
 
+void printMatrix(double* A, int netSize)
+{
+    std::cout << "netSize: " << netSize << std::endl;
+    for (int i = 0; i < netSize; i++)
+    {
+        for (int j = 0; j < netSize; j++)
+        {
+            std::cout << A[i * netSize + j] << "\t";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
 int main(int argc, char* argv[])
 {
     //as GPUs are always occupied, that function allows to choose which GPU to use
