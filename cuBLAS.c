@@ -73,10 +73,9 @@ int main(int argc, char* argv[])
         thermalConductivityMatrixMod[(netSize - 1) * netSize + ((netSize - 1) - i)] = horizontalStepBottom * i + br;
     }
 
-    double* error;
-    *error = 10.0;
+    double error = 10.0;
     int iteration = 0;
-    int errorIdx;
+    int errorIdx = 0;
     const double alpha = -1.0;
 
     cublasHandle_t handle;
@@ -87,7 +86,7 @@ int main(int argc, char* argv[])
     if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas handle creation failed!\n"); return -1; } //add memory free
 
     //iterations. These are interpretation of Fortran code for C
-    while (*error > minError && iteration < maxIterations) {
+    while (error > minError && iteration < maxIterations) {
 
         //pragma present check if array is on the device
         #pragma acc data present(thermalConductivityMatrix, thermalConductivityMatrixMod)
@@ -107,7 +106,6 @@ int main(int argc, char* argv[])
 
         //pragma to use data adress within host code
         #pragma acc host_data use_device(thermalConductivityMatrix, thermalConductivityMatrixMod, thermalConductivityMatrixModCopy)
-        #pragma acc data copy(error)
         {
                 //copies array to use Daxpy as Daxpy changes one of functional arrays
                 stat = cublasDcopy(handle, arrSize, thermalConductivityMatrixMod, 1, thermalConductivityMatrixModCopy, 1);
@@ -121,8 +119,8 @@ int main(int argc, char* argv[])
                 stat = cublasIdamax(handle, arrSize, thermalConductivityMatrixModCopy, 1, &errorIdx);
                 if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas idamax failed!\n"); break; }
             }
-            #pragma acc_update_self
-            *error = thermalConductivityMatrixModCopy[errorIdx - 1];
+            #pragma acc update host(thermalConductivityMatrixModCopy[errorIdx - 1])
+            error = thermalConductivityMatrixModCopy[errorIdx - 1];
         }
 
         //every 1000th iteration the error will be printed
