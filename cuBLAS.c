@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
 
     //error tracking
     stat = cublasCreate(&handle);
-    if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas handle creation failed!\n"); return -1; }
+    if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas handle creation failed!\n"); return -1; } //add memory free
 
     //iterations. These are interpretation of Fortran code for C
     while (error > minError && iteration < maxIterations) {
@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
                 stat = cublasIdamax(handle, arrSize, thermalConductivityMatrixModCopy, 1, &errorIdx);
                 if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas idamax failed!\n"); break; }
             }
-            error = thermalConductivityMatrixModCopy[errorIdx - 1];
+            error = thermalConductivityMatrixModCopy[errorIdx - 1]; //kernels, host update
         }
 
         //every 1000th iteartion the error will be printed
@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
         temp = thermalConductivityMatrix;
         thermalConductivityMatrix = thermalConductivityMatrixMod;
         thermalConductivityMatrixMod = temp;
-
+        
         iteration++;
 
     }
