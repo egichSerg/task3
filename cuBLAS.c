@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
         thermalConductivityMatrixMod[(netSize - 1) * netSize + ((netSize - 1) - i)] = horizontalStepBottom * i + br;
     }
 
-    double error = 10.;
+    double* error = 10.;
     int iteration = 0;
     int errorIdx;
     const double alpha = -1.0;
@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
     if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas handle creation failed!\n"); return -1; } //add memory free
 
     //iterations. These are interpretation of Fortran code for C
-    while (error > minError && iteration < maxIterations) {
+    while (*error > minError && iteration < maxIterations) {
 
         //pragma present check if array is on the device
         #pragma acc data present(thermalConductivityMatrix, thermalConductivityMatrixMod)
@@ -103,11 +103,10 @@ int main(int argc, char* argv[])
 
         //every 100th iteration will be the tracking iteration - error will be calculated and printed
         if (iteration % 100 == 0) {
-        error = 0.;
-        errorIdx = 0;
 
         //pragma to use data adress within host code
         #pragma acc host_data use_device(thermalConductivityMatrix, thermalConductivityMatrixMod, thermalConductivityMatrixModCopy)
+        #pragma acc data copy(error)
         {
                 //copies array to use Daxpy as Daxpy changes one of functional arrays
                 stat = cublasDcopy(handle, arrSize, thermalConductivityMatrixMod, 1, thermalConductivityMatrixModCopy, 1);
@@ -121,10 +120,11 @@ int main(int argc, char* argv[])
                 stat = cublasIdamax(handle, arrSize, thermalConductivityMatrixModCopy, 1, &errorIdx);
                 if (stat != CUBLAS_STATUS_SUCCESS) { printf("cublas idamax failed!\n"); break; }
             }
-            error = thermalConductivityMatrixModCopy[errorIdx - 1]; //kernels, host update
+            #pragma acc_update_self
+            *error = thermalConductivityMatrixModCopy[errorIdx - 1];
         }
 
-        //every 1000th iteartion the error will be printed
+        //every 1000th iteration the error will be printed
         if (iteration % 1000 == 0)
             printf("iteration: %d error = %0.20g\n", iteration, error);
 
