@@ -60,10 +60,17 @@ int main(int argc, char* argv[])
     #pragma acc parallel loop
     for (int i = 0; i < netSize; i++)
     {
+        //A init
         thermalConductivityMatrix[i * netSize] = verticalStepLeft * i + tl;
         thermalConductivityMatrix[i] = horizontalStepTop * i + tl;
         thermalConductivityMatrix[((netSize - 1) - i) * netSize + (netSize - 1)] = verticalStepRight * i + br;
         thermalConductivityMatrix[(netSize - 1) * netSize + ((netSize - 1) - i)] = horizontalStepBottom * i + br;
+        
+        //Anew init
+        thermalConductivityMatrixMod[i * netSize] = verticalStepLeft * i + tl;
+        thermalConductivityMatrixMod[i] = horizontalStepTop * i + tl;
+        thermalConductivityMatrixMod[((netSize - 1) - i) * netSize + (netSize - 1)] = verticalStepRight * i + br;
+        thermalConductivityMatrixMod[(netSize - 1) * netSize + ((netSize - 1) - i)] = horizontalStepBottom * i + br;
     }
 
     double error = 10.;
