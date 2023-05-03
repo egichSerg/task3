@@ -73,7 +73,8 @@ int main(int argc, char* argv[])
         thermalConductivityMatrixMod[(netSize - 1) * netSize + ((netSize - 1) - i)] = horizontalStepBottom * i + br;
     }
 
-    double* error = 10.;
+    double* error;
+    *error = 10.0;
     int iteration = 0;
     int errorIdx;
     const double alpha = -1.0;
