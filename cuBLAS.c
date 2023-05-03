@@ -64,11 +64,6 @@ int main(int argc, char* argv[])
         thermalConductivityMatrix[i] = horizontalStepTop * i + tl;
         thermalConductivityMatrix[((netSize - 1) - i) * netSize + (netSize - 1)] = verticalStepRight * i + br;
         thermalConductivityMatrix[(netSize - 1) * netSize + ((netSize - 1) - i)] = horizontalStepBottom * i + br;
-
-        thermalConductivityMatrixMod[i * netSize] = verticalStepLeft * i + tl;
-        thermalConductivityMatrixMod[i] = horizontalStepTop * i + tl;
-        thermalConductivityMatrixMod[((netSize - 1) - i) * netSize + (netSize - 1)] = verticalStepRight * i + br;
-        thermalConductivityMatrixMod[(netSize - 1) * netSize + ((netSize - 1) - i)] = horizontalStepBottom * i + br;
     }
 
     double error = 10.;
